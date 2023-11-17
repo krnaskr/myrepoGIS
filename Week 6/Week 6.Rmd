@@ -1,0 +1,70 @@
+---
+title: "Untitled"
+author: "Kirana"
+date: "2023-11-17"
+output: html_document
+---
+Step 1: Load Library
+```{r}
+library(spatstat)
+library(here)
+library(sp)
+library(tmap)
+library(sf)
+library(geojson)
+library(geojsonio)
+library(tmaptools)
+library(tidyverse)
+```
+
+Step 2: Load London Boroughs from London Boundaries Shapefile
+```{r}
+LondonBoroughs <- st_read(here::here("data", "statistical-gis-boundaries-london", "ESRI", "London_Borough_Excluding_MHW.shp"))
+
+BoroughMap <- LondonBoroughs %>%
+  dplyr::filter(str_detect(GSS_CODE, "^E09")) %>%
+  st_transform(., 27700)
+
+qtm(BoroughMap)
+```
+
+Step 3: Load Blue Plaques geojson
+```{r}
+BluePlaques <- st_read(here::here("data", "open-plaques-london-2018-04-08.geojson")) %>%
+  st_transform(., 27700)
+```
+
+Step 4: Map Blue Plaques geojson with London Boroughs
+```{r}
+tmap_mode("plot")
+tm_shape(BoroughMap) + 
+  tm_polygons(col=NA, alpha=0.5) +
+tm_shape(BluePlaques) + 
+  tm_dots(col="red")
+  
+```
+
+Step 5: Remove Blue Plaques points outside London Boroughs and spatial subsetting
+```{r}
+BluePlaques2 <- distinct(BluePlaques)
+BluePlaquesSub <- BluePlaques2[BoroughMap,]
+
+tmap_mode("plot")
+tm_shape(BoroughMap) + 
+  tm_polygons(col=NA, alpha=0.5) +
+tm_shape(BluePlaquesSub) + 
+  tm_dots(col="red")
+
+intersect_indices <- st_intersects(BoroughMap, BluePlaques2)
+  
+```
+
+Step 6: Spatial Clipping
+```{r}
+OSM <- st_read(here::here("data", "Greater London", "gis_osm_pois_free_1.shp")) %>%
+  st_transform(., 27700) %>%
+  filter(fclass=='hotel')
+
+Londonborough <- LondonBoroughs %>% st_transform(., 27700)
+join_example <- st_join(OSM, Londonborough)
+```
